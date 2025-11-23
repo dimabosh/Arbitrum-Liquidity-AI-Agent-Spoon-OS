@@ -161,25 +161,14 @@ class ArbitrumLiquidityPositionTool(BaseTool):
         """
         try:
             if action == "query":
-                # Query existing positions
-                positions = [
-                    {
-                        "position_id": "12345",
-                        "pool": "0xC31E54c7a869B9FcBEcc14363CF510d1c41fa443",
-                        "token0": "WETH",
-                        "token1": "USDC",
-                        "tick_lower": 200000,
-                        "tick_upper": 204000,
-                        "liquidity": 1_000_000_000,
-                        "tokens_owed0": "0.05",
-                        "tokens_owed1": "150.25",
-                        "fee_growth0": 1234567,
-                        "fee_growth1": 7654321,
-                        "unclaimed_fees_usd": 175.50,
-                        "current_value_usd": 10_000.00,
-                        "in_range": True,
-                    }
-                ]
+                # TODO: Implement real position fetching from blockchain
+                # For now, return empty list - no mock data
+                # In real implementation, would query:
+                # - Uniswap V3 NonfungiblePositionManager contract
+                # - Get positions for wallet_address
+                # - Fetch position details and calculate values
+
+                positions = []  # Empty until real implementation
 
                 return ToolResult(
                     output=positions,

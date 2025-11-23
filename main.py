@@ -261,18 +261,14 @@ async def get_positions(request: web.Request) -> web.Response:
 
         agent = agents[wallet_address]
 
-        # Mock positions for now - implement actual position fetching
-        positions = [
-            {
-                "position_id": "12345",
-                "token0": "WETH",
-                "token1": "USDC",
-                "dex": "Uniswap V3",
-                "current_value_usd": 10000.00,
-                "unclaimed_fees_usd": 125.50,
-                "in_range": True
-            }
-        ]
+        # Fetch real positions from agent's position tool
+        result = await agent.position_tool.execute(action="query")
+
+        if result.error:
+            logger.warning(f"Error fetching positions: {result.error}")
+            positions = []
+        else:
+            positions = result.output if isinstance(result.output, list) else []
 
         return web.json_response({
             "success": True,
