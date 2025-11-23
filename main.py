@@ -145,12 +145,10 @@ async def start_agent(request: web.Request) -> web.Response:
         else:
             logger.info(f"Using user-provided OpenRouter key for wallet {wallet_address}")
 
-        # Check if agent already running
+        # Check if agent already running - stop it and restart
         if wallet_address in agents:
-            return web.json_response(
-                {"error": "Agent already running for this wallet"},
-                status=400
-            )
+            logger.info(f"Agent already running for {wallet_address}, restarting...")
+            del agents[wallet_address]
 
         logger.info(f"Starting agent for wallet {wallet_address}, model: {model}, strategy: {strategy}")
 
