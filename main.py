@@ -299,11 +299,10 @@ async def get_recommendations(request: web.Request) -> web.Response:
         agent = agents[wallet_address]
         logger.info(f"Agent found for wallet: {wallet_address}")
 
-        # Get top pools to analyze
+        # Get top pools to analyze - real Arbitrum pools
         top_pools = [
-            {"address": "0xC31E54c7a869B9FcBEcc14363CF510d1c41fa443", "token0": "WETH", "token1": "USDC"},
-            {"address": "0x641C00A822e8b671738d32a431a4Fb6074E5c79d", "token0": "ARB", "token1": "USDC"},
-            {"address": "0x8c9D3Bc4425773FB08Cf6b1f3E84DE5D4aF5f3c5", "token0": "WETH", "token1": "ARB"},
+            {"address": "0xC6962004f452bE9203591991D15f6b388e09E8D0", "token0": "ETH", "token1": "USDC"},
+            {"address": "0x2f5e87C9312fa29aed5c179E456625D79015299c", "token0": "WBTC", "token1": "ETH"},
         ]
 
         recommendations = []
