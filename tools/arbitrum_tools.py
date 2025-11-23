@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 class ArbitrumPoolDataTool(BaseTool):
     """Fetch liquidity pool data from Arbitrum DEXes (Uniswap V3, Camelot, etc.)."""
 
-    name = "arbitrum_pool_data"
-    description = "Fetch real-time data for liquidity pools on Arbitrum network"
+    name: str = "arbitrum_pool_data"
+    description: str = "Fetch real-time data for liquidity pools on Arbitrum network"
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the pool data tool.
@@ -96,8 +96,8 @@ class ArbitrumPoolDataTool(BaseTool):
 class ArbitrumLiquidityPositionTool(BaseTool):
     """Manage liquidity positions on Arbitrum (Uniswap V3 NFT positions)."""
 
-    name = "arbitrum_liquidity_position"
-    description = "Query and manage liquidity positions on Arbitrum DEXes"
+    name: str = "arbitrum_liquidity_position"
+    description: str = "Query and manage liquidity positions on Arbitrum DEXes"
 
     def __init__(self, rpc_url: Optional[str] = None, wallet_address: Optional[str] = None):
         """Initialize the position management tool.
@@ -237,8 +237,8 @@ class ArbitrumSwapTool(BaseTool):
     Wraps Spoon OS EvmSwapTool with Arbitrum-specific configuration.
     """
 
-    name = "arbitrum_swap"
-    description = "Execute token swaps on Arbitrum for liquidity rebalancing"
+    name: str = "arbitrum_swap"
+    description: str = "Execute token swaps on Arbitrum for liquidity rebalancing"
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the swap tool.
@@ -318,8 +318,8 @@ class ArbitrumSwapTool(BaseTool):
 class ArbitrumRebalanceTool(BaseTool):
     """High-level tool for rebalancing liquidity positions on Arbitrum."""
 
-    name = "arbitrum_rebalance"
-    description = "Automated rebalancing of liquidity positions using swaps"
+    name: str = "arbitrum_rebalance"
+    description: str = "Automated rebalancing of liquidity positions using swaps"
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the rebalance tool.
