@@ -118,6 +118,8 @@ class YieldMaximizationStrategy(LiquidityStrategy):
             apr_score = 40 * (pool.apr_7d / 50)
         else:
             apr_score = 20 * (pool.apr_7d / 15)
+
+        logger.debug(f"Pool {pool.token0}/{pool.token1}: APR={pool.apr_7d:.1f}% → apr_score={apr_score:.1f}")
         score += apr_score
 
         # Volume/TVL ratio (0-30 points)
@@ -129,6 +131,8 @@ class YieldMaximizationStrategy(LiquidityStrategy):
             volume_score = 30 * (volume_ratio / 1.0)
         else:
             volume_score = 15 * (volume_ratio / 0.3)
+
+        logger.debug(f"Pool {pool.token0}/{pool.token1}: Vol/TVL={volume_ratio:.2f} → volume_score={volume_score:.1f}")
         score += volume_score
 
         # TVL/Liquidity depth (0-20 points)
@@ -138,6 +142,8 @@ class YieldMaximizationStrategy(LiquidityStrategy):
             liquidity_score = 20 * (pool.tvl_usd / 10_000_000)
         else:
             liquidity_score = 10 * (pool.tvl_usd / self.min_tvl)
+
+        logger.debug(f"Pool {pool.token0}/{pool.token1}: TVL=${pool.tvl_usd:,.0f} → liquidity_score={liquidity_score:.1f}")
         score += liquidity_score
 
         # Fee tier appropriateness (0-10 points)
@@ -158,7 +164,11 @@ class YieldMaximizationStrategy(LiquidityStrategy):
                 fee_score = 5
             else:
                 fee_score = 3
+
+        logger.debug(f"Pool {pool.token0}/{pool.token1}: fee_tier={pool.fee_tier} → fee_score={fee_score:.1f}")
         score += fee_score
+
+        logger.info(f"Pool {pool.token0}/{pool.token1}: TOTAL SCORE = {score:.1f} (APR:{apr_score:.1f} + Vol:{volume_score:.1f} + TVL:{liquidity_score:.1f} + Fee:{fee_score:.1f})")
 
         return min(score, 100.0)
 
