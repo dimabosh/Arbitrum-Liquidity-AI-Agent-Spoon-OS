@@ -122,7 +122,7 @@ async def start_agent(request: web.Request) -> web.Response:
         data = await request.json()
 
         wallet_address = data.get("wallet_address")
-        model = data.get("model", "anthropic/claude-3.5-sonnet")
+        model = data.get("model", "anthropic/claude-sonnet-4.5")
         strategy = data.get("strategy", "yield")
         rpc_url = data.get("rpc_url", "https://arb1.arbitrum.io/rpc")
         openrouter_key = data.get("openrouter_key")
