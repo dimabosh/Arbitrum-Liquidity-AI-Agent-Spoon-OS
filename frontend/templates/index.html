@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arbitrum Liquidity Agent - AI-Powered DeFi Management</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>🤖 Arbitrum Liquidity Agent</h1>
+                <p class="subtitle">AI-Powered DeFi Liquidity Management</p>
+            </div>
+            <div class="wallet-status">
+                <button id="connectWallet" class="btn btn-primary">
+                    Connect Wallet
+                </button>
+                <div id="walletInfo" class="wallet-info hidden">
+                    <span class="address" id="walletAddress"></span>
+                    <span class="balance" id="walletBalance"></span>
+                    <button id="disconnectWallet" class="btn btn-secondary">Disconnect</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Agent Configuration Panel -->
+            <section class="config-panel">
+                <h2>⚙️ Agent Configuration</h2>
+
+                <div class="config-grid">
+                    <!-- AI Model Selection -->
+                    <div class="config-item">
+                        <label for="modelSelect">AI Model (OpenRouter)</label>
+                        <select id="modelSelect" class="input-field">
+                            <optgroup label="Anthropic (Recommended)">
+                                <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (Best)</option>
+                                <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
+                                <option value="anthropic/claude-3-haiku">Claude 3 Haiku (Fast)</option>
+                            </optgroup>
+                            <optgroup label="OpenAI">
+                                <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
+                                <option value="openai/gpt-4">GPT-4</option>
+                                <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo (Cheap)</option>
+                            </optgroup>
+                            <optgroup label="Google">
+                                <option value="google/gemini-pro">Gemini Pro</option>
+                                <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+                            </optgroup>
+                            <optgroup label="Meta">
+                                <option value="meta-llama/llama-3-70b-instruct">Llama 3 70B</option>
+                            </optgroup>
+                            <optgroup label="Mistral">
+                                <option value="mistralai/mistral-large">Mistral Large</option>
+                                <option value="mistralai/mixtral-8x7b-instruct">Mixtral 8x7B</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Strategy Selection -->
+                    <div class="config-item">
+                        <label for="strategySelect">Strategy Type</label>
+                        <select id="strategySelect" class="input-field">
+                            <option value="yield">Yield Maximization (Aggressive)</option>
+                            <option value="balanced">Balanced (Conservative)</option>
+                        </select>
+                        <small class="help-text">
+                            Yield: Higher APR, more risk | Balanced: Stable pools, lower risk
+                        </small>
+                    </div>
+
+                    <!-- RPC URL -->
+                    <div class="config-item">
+                        <label for="rpcUrl">Arbitrum RPC URL</label>
+                        <input type="text" id="rpcUrl" class="input-field"
+                               value="https://arb1.arbitrum.io/rpc"
+                               placeholder="https://arb1.arbitrum.io/rpc">
+                    </div>
+
+                    <!-- OpenRouter API Key -->
+                    <div class="config-item">
+                        <label for="openrouterKey">OpenRouter API Key</label>
+                        <input type="password" id="openrouterKey" class="input-field"
+                               placeholder="sk-or-v1-...">
+                        <small class="help-text">
+                            Get your key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Start Agent Button -->
+                <div class="action-buttons">
+                    <button id="startAgent" class="btn btn-success" disabled>
+                        🚀 Start Agent
+                    </button>
+                    <button id="stopAgent" class="btn btn-danger hidden">
+                        ⏹️ Stop Agent
+                    </button>
+                </div>
+            </section>
+
+            <!-- Agent Status -->
+            <section class="status-panel">
+                <h2>📊 Agent Status</h2>
+                <div id="agentStatus" class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">Status:</span>
+                        <span class="status-value" id="agentStatusValue">Not Started</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Model:</span>
+                        <span class="status-value" id="currentModel">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Strategy:</span>
+                        <span class="status-value" id="currentStrategy">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Network:</span>
+                        <span class="status-value" id="networkStatus">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Activity Log -->
+            <section class="log-panel">
+                <h2>📝 Activity Log</h2>
+                <div id="activityLog" class="log-container">
+                    <div class="log-entry">
+                        <span class="timestamp">--:--:--</span>
+                        <span class="message">Waiting for agent to start...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Positions Overview -->
+            <section class="positions-panel">
+                <h2>💼 Your Liquidity Positions</h2>
+                <div id="positionsContainer" class="positions-grid">
+                    <div class="empty-state">
+                        Connect wallet and start agent to view positions
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recommendations -->
+            <section class="recommendations-panel">
+                <h2>💡 AI Recommendations</h2>
+                <div id="recommendationsContainer" class="recommendations-grid">
+                    <div class="empty-state">
+                        Agent will provide recommendations here
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Built with <a href="https://spoonai.io/" target="_blank">Spoon OS</a> |
+               Powered by <a href="https://openrouter.ai/" target="_blank">OpenRouter</a></p>
+            <p class="warning">⚠️ Use at your own risk. Always review transactions before signing.</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/wallet.js"></script>
+    <script src="/static/js/agent.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
