@@ -39,6 +39,12 @@ from tools.arbitrum_tools import (
     ArbitrumSwapTool,
     ArbitrumRebalanceTool,
 )
+from tools.liquidity_strategy import (
+    create_strategy,
+    LiquidityStrategy,
+    PoolMetrics,
+    LiquidityOpportunity,
+)
 
 load_dotenv()
 
@@ -67,13 +73,20 @@ class LiquidityAgentState(TypedDict, total=False):
 class ArbitrumLiquidityAgent:
     """Main agent for Arbitrum liquidity automation."""
 
-    def __init__(self, llm_provider: str = "openai", model_name: str = "gpt-4.1", rpc_url: Optional[str] = None):
+    def __init__(
+        self,
+        llm_provider: str = "openai",
+        model_name: str = "gpt-4.1",
+        rpc_url: Optional[str] = None,
+        strategy_type: str = "yield"
+    ):
         """Initialize the Arbitrum Liquidity Agent.
 
         Args:
             llm_provider: LLM provider to use (openai, anthropic, gemini, etc.)
             model_name: Specific model to use for reasoning
             rpc_url: Arbitrum RPC URL for on-chain operations
+            strategy_type: "yield" for yield maximization, "balanced" for balanced approach
         """
         self.llm = get_llm_manager()
         self.llm_provider = llm_provider
@@ -84,6 +97,10 @@ class ArbitrumLiquidityAgent:
         self.position_tool = ArbitrumLiquidityPositionTool(rpc_url=rpc_url)
         self.swap_tool = ArbitrumSwapTool(rpc_url=rpc_url)
         self.rebalance_tool = ArbitrumRebalanceTool(rpc_url=rpc_url)
+
+        # Initialize liquidity strategy
+        self.strategy = create_strategy(strategy_type)
+        logger.info(f"Initialized with {strategy_type} strategy: {self.strategy.__class__.__name__}")
 
         self.graph = self._build_graph()
 
@@ -241,6 +258,143 @@ class ArbitrumLiquidityAgent:
             "risk_assessment": risk_assessment,
             "execution_log": log,
         }
+
+    async def _evaluate_opportunities(
+        self, state: LiquidityAgentState, config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Evaluate liquidity opportunities using concrete strategy.
+
+        This method uses the strategy pattern to score and rank pools.
+        """
+        pool_analytics = state.get("pool_analytics", {})
+        positions = state.get("current_positions", {})
+        log = list(state.get("execution_log", []))
+
+        opportunities = []
+
+        for pool_address, pool_data in pool_analytics.items():
+            if isinstance(pool_data, dict) and "error" not in pool_data:
+                # Convert pool data to PoolMetrics
+                metrics = PoolMetrics(
+                    address=pool_address,
+                    dex=pool_data.get("dex", "uniswap_v3"),
+                    token0=pool_data.get("token0", ""),
+                    token1=pool_data.get("token1", ""),
+                    tvl_usd=pool_data.get("tvl_usd", 0),
+                    volume_24h_usd=pool_data.get("volume_24h_usd", 0),
+                    fees_24h_usd=pool_data.get("fees_24h_usd", 0),
+                    fee_tier=float(pool_data.get("fee_tier", "0.3").replace("%", "")),
+                    current_price=pool_data.get("current_price", 0),
+                    price_change_24h=pool_data.get("price_change_24h", 0),
+                    apr_7d=pool_data.get("apr_7d", 0),
+                    apr_30d=pool_data.get("apr_30d", 0),
+                    liquidity=pool_data.get("liquidity", 0),
+                )
+
+                # Evaluate using strategy
+                score = self.strategy.evaluate_pool(metrics)
+                should_enter = self.strategy.should_enter(
+                    metrics,
+                    positions.get("active_positions", [])
+                )
+
+                if should_enter:
+                    # Calculate optimal range
+                    tick_lower, tick_upper = self.strategy.calculate_position_range(
+                        metrics,
+                        risk_tolerance="moderate"
+                    )
+
+                    # Estimate position size
+                    recommended_amount = self._calculate_position_size(metrics, score)
+
+                    # Determine risk level
+                    risk_level = self._classify_risk(metrics)
+
+                    opportunity = LiquidityOpportunity(
+                        pool=metrics,
+                        score=score,
+                        recommended_amount_usd=recommended_amount,
+                        tick_lower=tick_lower,
+                        tick_upper=tick_upper,
+                        expected_apr=metrics.apr_7d,
+                        risk_level=risk_level,
+                        reason=f"Score: {score:.1f}/100, APR: {metrics.apr_7d:.1f}%, Vol/TVL: {(metrics.volume_24h_usd/max(metrics.tvl_usd,1)):.2%}",
+                        warnings=self._generate_warnings(metrics)
+                    )
+                    opportunities.append(opportunity)
+
+        # Sort by score
+        opportunities.sort(key=lambda x: x.score, reverse=True)
+
+        log.append(f"Strategy evaluation: {len(opportunities)} opportunities found from {len(pool_analytics)} pools")
+
+        # Convert to dict for state
+        opportunities_dict = [
+            {
+                "pool_address": opp.pool.address,
+                "token_pair": f"{opp.pool.token0}/{opp.pool.token1}",
+                "score": opp.score,
+                "recommended_amount_usd": opp.recommended_amount_usd,
+                "tick_lower": opp.tick_lower,
+                "tick_upper": opp.tick_upper,
+                "expected_apr": opp.expected_apr,
+                "risk_level": opp.risk_level,
+                "reason": opp.reason,
+                "warnings": opp.warnings
+            }
+            for opp in opportunities[:5]  # Top 5
+        ]
+
+        return {
+            "rebalance_recommendations": opportunities_dict,
+            "execution_log": log,
+        }
+
+    def _calculate_position_size(self, pool: PoolMetrics, score: float) -> float:
+        """Calculate recommended position size based on pool metrics and score."""
+        # Base amount: 1-10k USD depending on score
+        base_amount = 1000 + (score / 100) * 9000
+
+        # Adjust for pool size (don't be more than 1% of pool)
+        max_by_tvl = pool.tvl_usd * 0.01
+
+        # Adjust for risk
+        if pool.price_change_24h > 10:
+            base_amount *= 0.5  # Reduce for high volatility
+
+        return min(base_amount, max_by_tvl, 10000)  # Cap at 10k
+
+    def _classify_risk(self, pool: PoolMetrics) -> str:
+        """Classify pool risk level."""
+        # Check if stablecoin pair
+        stablecoins = {"USDC", "USDT", "DAI", "FRAX", "LUSD"}
+        is_stable = pool.token0 in stablecoins and pool.token1 in stablecoins
+
+        if is_stable:
+            return "low"
+        elif abs(pool.price_change_24h) > 10:
+            return "high"
+        else:
+            return "medium"
+
+    def _generate_warnings(self, pool: PoolMetrics) -> List[str]:
+        """Generate warnings for a pool."""
+        warnings = []
+
+        if pool.tvl_usd < 1_000_000:
+            warnings.append("Low liquidity - higher slippage risk")
+
+        if pool.volume_24h_usd < 100_000:
+            warnings.append("Low volume - fees may be lower than expected")
+
+        if abs(pool.price_change_24h) > 15:
+            warnings.append(f"High volatility: {pool.price_change_24h:.1f}% in 24h")
+
+        if pool.apr_7d > 50:
+            warnings.append("Very high APR - may be unsustainable")
+
+        return warnings
 
     async def _generate_rebalance_plan(
         self, state: LiquidityAgentState, config: Optional[Dict[str, Any]] = None
@@ -489,6 +643,7 @@ class ArbitrumLiquidityAgent:
                 NodeSpec("fetch_pool_data", self._fetch_pool_data),
                 NodeSpec("check_positions", self._check_positions),
                 NodeSpec("assess_risk", self._assess_risk),
+                NodeSpec("evaluate_opportunities", self._evaluate_opportunities),  # NEW: Strategy-based evaluation
                 NodeSpec("generate_rebalance", self._generate_rebalance_plan),
                 NodeSpec("create_execution_plan", self._create_execution_plan),
                 NodeSpec("execute_operations", self._execute_operations),
@@ -499,7 +654,8 @@ class ArbitrumLiquidityAgent:
                 EdgeSpec("analyze_query", "fetch_pool_data"),
                 EdgeSpec("fetch_pool_data", "check_positions"),
                 EdgeSpec("check_positions", "assess_risk"),
-                EdgeSpec("assess_risk", "generate_rebalance"),
+                EdgeSpec("assess_risk", "evaluate_opportunities"),  # NEW: Use strategy first
+                EdgeSpec("evaluate_opportunities", "generate_rebalance"),  # Then LLM refinement
                 EdgeSpec("generate_rebalance", "create_execution_plan"),
                 EdgeSpec("create_execution_plan", "execute_operations"),
                 EdgeSpec("execute_operations", "finalize_report"),

@@ -23,10 +23,13 @@ This agent leverages **Spoon OS**, an agentic operating system for Web3:
 ### Key Components
 
 1. **ArbitrumLiquidityAgent**: Main agent coordinating liquidity operations
-2. **ArbitrumPoolDataTool**: Fetch pool data from Arbitrum DEXes
-3. **ArbitrumLiquidityPositionTool**: Manage Uniswap V3 NFT positions
-4. **ArbitrumSwapTool**: Execute token swaps (wraps Spoon OS EvmSwapTool)
-5. **ArbitrumRebalanceTool**: High-level rebalancing automation
+2. **Liquidity Strategies**: Mathematical algorithms for pool selection
+   - **Yield Maximization**: High APR focus with calculated risk
+   - **Balanced**: Stable yields with conservative approach
+3. **ArbitrumPoolDataTool**: Fetch pool data from Arbitrum DEXes
+4. **ArbitrumLiquidityPositionTool**: Manage Uniswap V3 NFT positions
+5. **ArbitrumSwapTool**: Execute token swaps (wraps Spoon OS EvmSwapTool)
+6. **ArbitrumRebalanceTool**: High-level rebalancing automation
 
 ## Installation
 
@@ -88,6 +91,13 @@ SIGNER_TYPE=auto
 
 ## Usage
 
+### Strategy Selection
+
+Choose a strategy when initializing the agent:
+
+- **`yield`**: Maximizes APR, accepts higher volatility, score threshold 60/100
+- **`balanced`**: Prioritizes stability, lower risk, score threshold 70/100
+
 ### Basic Example
 
 ```python
@@ -95,11 +105,12 @@ import asyncio
 from agents.arbitrum_liquidity_agent import ArbitrumLiquidityAgent
 
 async def main():
-    # Initialize agent
+    # Initialize agent with strategy
     agent = ArbitrumLiquidityAgent(
         llm_provider="openai",
         model_name="gpt-4-turbo-preview",
-        rpc_url="https://arb1.arbitrum.io/rpc"
+        rpc_url="https://arb1.arbitrum.io/rpc",
+        strategy_type="yield"  # or "balanced"
     )
 
     # Execute liquidity management query
@@ -130,6 +141,24 @@ python arbitrum_liquidity_agent.py
 
 ## How It Works
 
+### Pool Selection Strategy
+
+The agent uses **concrete mathematical strategies** (not just LLM guesses) to select pools:
+
+1. **Fetch Pool Data**: Get TVL, volume, APR, fees from all Arbitrum DEXes
+2. **Apply Strategy Algorithm**: Score each pool (0-100) based on:
+   - APR and yield potential
+   - Volume/TVL ratio
+   - Liquidity depth
+   - Fee tier appropriateness
+   - Volatility and risk
+3. **Filter Candidates**: Only pools meeting minimum criteria
+4. **Calculate Optimal Ranges**: Use Uniswap V3 tick math for concentrated liquidity
+5. **Estimate Position Size**: Based on score and pool size
+6. **LLM Refinement**: Natural language reasoning on top opportunities
+
+**See [docs/STRATEGY_GUIDE.md](docs/STRATEGY_GUIDE.md) for detailed scoring algorithms.**
+
 ### Workflow
 
 The agent uses a declarative graph-based workflow:
@@ -144,6 +173,8 @@ Analyze Query (LLM)
 └─────────────────────┴─────────────────────┘
     ↓
 Assess Risk (LLM)
+    ↓
+Evaluate Opportunities (STRATEGY)  ← Concrete math, not LLM!
     ↓
 Generate Rebalance Plan (LLM)
     ↓
