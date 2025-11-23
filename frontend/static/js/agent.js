@@ -311,6 +311,9 @@ class AgentManager {
 
         container.innerHTML = recommendations.map(rec => `
             <div class="recommendation-card">
+                <div class="recommendation-score">
+                    Score: ${rec.score?.toFixed(1) || '0'}/100
+                </div>
                 <h3>${rec.token_pair}</h3>
                 <div class="position-details">
                     <div class="detail-row">

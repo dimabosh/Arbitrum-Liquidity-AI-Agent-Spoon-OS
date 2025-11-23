@@ -244,7 +244,7 @@ class YieldMaximizationStrategy(LiquidityStrategy):
             return False
 
         score = self.evaluate_pool(pool)
-        threshold = 60.0  # Minimum score to enter
+        threshold = 50.0  # Minimum score to enter
 
         logger.info(f"Pool {pool.address}: Score {score:.1f}/100 (threshold: {threshold})")
         return score >= threshold
