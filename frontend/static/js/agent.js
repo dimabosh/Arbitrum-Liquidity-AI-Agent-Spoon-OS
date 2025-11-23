@@ -31,16 +31,11 @@ class AgentManager {
         this.config = {
             model: document.getElementById('modelSelect')?.value || this.config.model,
             strategy: document.getElementById('strategySelect')?.value || this.config.strategy,
-            rpcUrl: document.getElementById('rpcUrl')?.value || this.config.rpcUrl,
-            openrouterKey: document.getElementById('openrouterKey')?.value || ''
+            rpcUrl: this.config.rpcUrl,  // Use default from config
+            openrouterKey: ''  // Always use server key
         };
 
-        // API key is optional - server will use its own if not provided
-        if (this.config.openrouterKey) {
-            this.addLog('Using your OpenRouter API key', 'info');
-        } else {
-            this.addLog('Using server OpenRouter API key', 'info');
-        }
+        this.addLog('Using server configuration', 'info');
 
         try {
             this.addLog('Starting agent...', 'info');
