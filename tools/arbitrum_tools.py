@@ -24,6 +24,15 @@ class ArbitrumPoolDataTool(BaseTool):
 
     name: str = "arbitrum_pool_data"
     description: str = "Fetch real-time data for liquidity pools on Arbitrum network"
+    parameters: Dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "pool_address": {"type": "string", "description": "Pool contract address"},
+            "token0": {"type": "string", "description": "First token symbol or address"},
+            "token1": {"type": "string", "description": "Second token symbol or address"},
+            "dex": {"type": "string", "description": "DEX name (uniswap_v3, camelot, sushiswap)"}
+        }
+    }
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the pool data tool.
@@ -98,6 +107,16 @@ class ArbitrumLiquidityPositionTool(BaseTool):
 
     name: str = "arbitrum_liquidity_position"
     description: str = "Query and manage liquidity positions on Arbitrum DEXes"
+    parameters: Dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "description": "Action to perform (query, add, remove, collect_fees)"},
+            "position_id": {"type": "string", "description": "NFT position ID"},
+            "pool_address": {"type": "string", "description": "Pool contract address"},
+            "tick_lower": {"type": "integer", "description": "Lower tick for concentrated liquidity"},
+            "tick_upper": {"type": "integer", "description": "Upper tick for concentrated liquidity"}
+        }
+    }
 
     def __init__(self, rpc_url: Optional[str] = None, wallet_address: Optional[str] = None):
         """Initialize the position management tool.
@@ -239,6 +258,17 @@ class ArbitrumSwapTool(BaseTool):
 
     name: str = "arbitrum_swap"
     description: str = "Execute token swaps on Arbitrum for liquidity rebalancing"
+    parameters: Dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "from_token": {"type": "string", "description": "Token to swap from"},
+            "to_token": {"type": "string", "description": "Token to swap to"},
+            "amount": {"type": "string", "description": "Amount to swap"},
+            "slippage": {"type": "number", "description": "Slippage tolerance in percent"},
+            "dex": {"type": "string", "description": "DEX to use"}
+        },
+        "required": ["from_token", "to_token", "amount"]
+    }
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the swap tool.
@@ -320,6 +350,15 @@ class ArbitrumRebalanceTool(BaseTool):
 
     name: str = "arbitrum_rebalance"
     description: str = "Automated rebalancing of liquidity positions using swaps"
+    parameters: Dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "position_id": {"type": "string", "description": "Position ID to rebalance"},
+            "target_ratio": {"type": "object", "description": "Target token ratio"},
+            "auto_compound": {"type": "boolean", "description": "Auto-compound fees"}
+        },
+        "required": ["position_id"]
+    }
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the rebalance tool.
