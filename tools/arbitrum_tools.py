@@ -36,7 +36,7 @@ class ArbitrumPoolDataTool(BaseTool):
     }
 
     rpc_url: Optional[str] = None
-    graph_url: str = "https://api.thegraph.com/subgraphs/name/ianlapham/uniswap-v3-arbitrum-one"
+    graph_url: str = "https://api.thegraph.com/subgraphs/id/FQ6JYszEKApsBpAmiHesRsd9Ygc6mzmpNRANeVQFYoVX"
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the pool data tool.
