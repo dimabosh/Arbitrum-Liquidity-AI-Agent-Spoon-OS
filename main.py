@@ -356,7 +356,7 @@ async def get_recommendations(request: web.Request) -> web.Response:
 
                 logger.info(f"Pool {metrics.token0}/{metrics.token1}: score={score:.1f}, should_enter={should_enter}")
 
-                if should_enter and score >= 60:
+                if should_enter and score >= 50:
                     # Calculate position size
                     recommended_amount = 1000 + (score / 100) * 9000
                     recommended_amount = min(recommended_amount, metrics.tvl_usd * 0.01, 10000)

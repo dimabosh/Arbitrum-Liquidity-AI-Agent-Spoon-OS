@@ -70,22 +70,56 @@ class ArbitrumPoolDataTool(BaseTool):
             # - Direct RPC calls to pool contracts
             # - DEX-specific APIs
 
+            # Realistic mock data based on actual Arbitrum pools
+            pool_configs = {
+                "WETH/USDC": {
+                    "tvl_usd": 45_000_000,
+                    "volume_24h_usd": 25_000_000,
+                    "fees_24h_usd": 12_500,
+                    "apr_7d": 18.5,
+                    "apr_30d": 16.2,
+                    "current_price": 3500.0,
+                    "price_change_24h": 1.2,
+                },
+                "ARB/USDC": {
+                    "tvl_usd": 28_000_000,
+                    "volume_24h_usd": 15_000_000,
+                    "fees_24h_usd": 7_500,
+                    "apr_7d": 22.8,
+                    "apr_30d": 19.5,
+                    "current_price": 0.85,
+                    "price_change_24h": 3.5,
+                },
+                "WETH/ARB": {
+                    "tvl_usd": 18_000_000,
+                    "volume_24h_usd": 12_000_000,
+                    "fees_24h_usd": 6_000,
+                    "apr_7d": 25.3,
+                    "apr_30d": 21.7,
+                    "current_price": 4100.0,
+                    "price_change_24h": 2.8,
+                }
+            }
+
+            pair_key = f"{token0}/{token1}"
+            pool_config = pool_configs.get(pair_key, pool_configs["WETH/USDC"])
+
             pool_data = {
                 "pool_address": pool_address or "0x...",
                 "dex": dex,
                 "token0": token0 or "WETH",
                 "token1": token1 or "USDC",
                 "fee_tier": "0.05%",  # 5 bps
-                "tvl_usd": 10_000_000,
-                "volume_24h_usd": 5_000_000,
-                "fees_24h_usd": 2_500,
-                "current_price": 3000.0,
-                "price_change_24h": 2.5,
-                "liquidity": 15_000_000_000,
+                "tvl_usd": pool_config["tvl_usd"],
+                "volume_24h_usd": pool_config["volume_24h_usd"],
+                "fees_24h_usd": pool_config["fees_24h_usd"],
+                "current_price": pool_config["current_price"],
+                "price_change_24h": pool_config["price_change_24h"],
+                "liquidity": pool_config["tvl_usd"] * 1000,
                 "tick_current": 202020,
                 "sqrt_price_x96": 1234567890,
-                "apr_7d": 12.5,
-                "apr_30d": 15.8,
+                "apr_7d": pool_config["apr_7d"],
+                "apr_30d": pool_config["apr_30d"],
             }
 
             logger.info(f"Fetched pool data for {dex}: {token0}/{token1}")
