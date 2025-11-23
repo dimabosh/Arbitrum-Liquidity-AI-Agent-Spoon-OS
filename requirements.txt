@@ -10,8 +10,9 @@ web3>=6.0.0
 eth-account>=0.10.0
 eth-utils>=2.0.0
 
-# HTTP and API
+# HTTP and API (aiohttp required for web server)
 aiohttp>=3.9.0
+aiohttp-cors>=0.7.0
 requests>=2.31.0
 
 # Data Processing
