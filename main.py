@@ -287,14 +287,17 @@ async def get_recommendations(request: web.Request) -> web.Response:
     """Get AI recommendations for a wallet."""
     try:
         wallet_address = request.match_info.get("wallet_address")
+        logger.info(f"Getting recommendations for wallet: {wallet_address}")
 
         if not wallet_address or wallet_address not in agents:
+            logger.warning(f"No agent running for wallet: {wallet_address}")
             return web.json_response({
                 "recommendations": [],
                 "message": "No agent running"
             })
 
         agent = agents[wallet_address]
+        logger.info(f"Agent found for wallet: {wallet_address}")
 
         # Get top pools to analyze
         top_pools = [
@@ -307,6 +310,7 @@ async def get_recommendations(request: web.Request) -> web.Response:
 
         # Analyze each pool using the strategy
         for pool_info in top_pools:
+            logger.info(f"Analyzing pool: {pool_info['token0']}/{pool_info['token1']}")
             pool_result = await agent.pool_tool.execute(
                 pool_address=pool_info["address"],
                 token0=pool_info["token0"],
@@ -314,8 +318,17 @@ async def get_recommendations(request: web.Request) -> web.Response:
                 dex="uniswap_v3"
             )
 
+            if pool_result.error:
+                logger.warning(f"Error fetching pool {pool_info['token0']}/{pool_info['token1']}: {pool_result.error}")
+                continue
+
+            if not isinstance(pool_result.output, dict):
+                logger.warning(f"Invalid pool data format for {pool_info['token0']}/{pool_info['token1']}")
+                continue
+
             if not pool_result.error and isinstance(pool_result.output, dict):
                 pool_data = pool_result.output
+                logger.info(f"Pool data fetched successfully: TVL=${pool_data.get('tvl_usd', 0)}, APR={pool_data.get('apr_7d', 0)}%")
 
                 # Import strategy classes
                 from tools.liquidity_strategy import PoolMetrics
@@ -340,6 +353,8 @@ async def get_recommendations(request: web.Request) -> web.Response:
                 # Evaluate using strategy
                 score = agent.strategy.evaluate_pool(metrics)
                 should_enter = agent.strategy.should_enter(metrics, [])
+
+                logger.info(f"Pool {metrics.token0}/{metrics.token1}: score={score:.1f}, should_enter={should_enter}")
 
                 if should_enter and score >= 60:
                     # Calculate position size
@@ -370,7 +385,7 @@ async def get_recommendations(request: web.Request) -> web.Response:
                     if metrics.apr_7d > 50:
                         warnings.append("Very high APR - may be unsustainable")
 
-                    recommendations.append({
+                    rec = {
                         "pool_address": metrics.address,
                         "token_pair": f"{metrics.token0}/{metrics.token1}",
                         "score": round(score, 1),
@@ -381,10 +396,18 @@ async def get_recommendations(request: web.Request) -> web.Response:
                         "risk_level": risk_level,
                         "reason": f"Score: {score:.1f}/100, APR: {metrics.apr_7d:.1f}%, Vol/TVL: {(metrics.volume_24h_usd/max(metrics.tvl_usd,1)):.2%}",
                         "warnings": warnings
-                    })
+                    }
+                    recommendations.append(rec)
+                    logger.info(f"Added recommendation: {rec['token_pair']} with score {rec['score']}")
+                else:
+                    logger.info(f"Pool {metrics.token0}/{metrics.token1} did not meet criteria (score < 60 or should_enter=False)")
 
         # Sort by score
         recommendations.sort(key=lambda x: x["score"], reverse=True)
+
+        logger.info(f"Generated {len(recommendations)} recommendations for wallet {wallet_address}")
+        if recommendations:
+            logger.info(f"Top recommendation: {recommendations[0]['token_pair']} with score {recommendations[0]['score']}")
 
         return web.json_response({
             "success": True,

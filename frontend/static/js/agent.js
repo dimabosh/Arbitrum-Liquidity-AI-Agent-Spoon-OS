@@ -233,14 +233,23 @@ class AgentManager {
      */
     async fetchRecommendations() {
         try {
+            this.addLog('Fetching pool recommendations...', 'info');
             const response = await fetch(`/api/recommendations/${this.walletManager.getAccount()}`);
             const data = await response.json();
 
+            console.log('Recommendations response:', data);
+
             if (response.ok && data.recommendations) {
+                this.addLog(`Found ${data.recommendations.length} recommendations`, 'success');
                 this.updateRecommendations(data.recommendations);
+            } else if (response.ok && data.error) {
+                this.addLog(`Error getting recommendations: ${data.error}`, 'error');
+            } else if (!response.ok) {
+                this.addLog(`Failed to fetch recommendations: ${response.status}`, 'error');
             }
         } catch (error) {
             console.error('Error fetching recommendations:', error);
+            this.addLog(`Error fetching recommendations: ${error.message}`, 'error');
         }
     }
 
