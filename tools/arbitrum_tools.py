@@ -12,7 +12,6 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any, Dict, List, Optional
-import aiohttp
 
 from spoon_ai.tools.base import BaseTool, ToolResult
 from spoon_toolkits.crypto.evm import EvmSwapTool
@@ -36,7 +35,6 @@ class ArbitrumPoolDataTool(BaseTool):
     }
 
     rpc_url: Optional[str] = None
-    graph_url: str = "https://api.thegraph.com/subgraphs/id/FQ6JYszEKApsBpAmiHesRsd9Ygc6mzmpNRANeVQFYoVX"
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the pool data tool.
@@ -47,37 +45,6 @@ class ArbitrumPoolDataTool(BaseTool):
         super().__init__()
         self.rpc_url = rpc_url or os.getenv("ARBITRUM_RPC_URL", "https://arb1.arbitrum.io/rpc")
 
-    async def _query_graph(self, query: str) -> Dict[str, Any]:
-        """Query The Graph Protocol subgraph.
-
-        Args:
-            query: GraphQL query string
-
-        Returns:
-            Dictionary with query results
-        """
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.graph_url,
-                    json={"query": query},
-                    headers={"Content-Type": "application/json"}
-                ) as response:
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logger.error(f"Graph query failed: {error_text}")
-                        return {}
-
-                    result = await response.json()
-                    if "errors" in result:
-                        logger.error(f"GraphQL errors: {result['errors']}")
-                        return {}
-
-                    return result.get("data", {})
-        except Exception as e:
-            logger.error(f"Error querying The Graph: {e}")
-            return {}
-
     async def execute(
         self,
         pool_address: Optional[str] = None,
@@ -86,7 +53,7 @@ class ArbitrumPoolDataTool(BaseTool):
         dex: str = "uniswap_v3",
         **kwargs
     ) -> ToolResult:
-        """Fetch pool data from Arbitrum via The Graph Protocol.
+        """Fetch pool data - simple mock implementation.
 
         Args:
             pool_address: Specific pool address to query
@@ -95,106 +62,59 @@ class ArbitrumPoolDataTool(BaseTool):
             dex: DEX to query (uniswap_v3, camelot, sushiswap)
 
         Returns:
-            ToolResult with real pool data from The Graph
+            ToolResult with pool data
         """
         try:
-            if not pool_address:
-                return ToolResult(
-                    output=None,
-                    error="pool_address is required",
-                    metadata={}
-                )
-
-            # Convert address to lowercase for The Graph
-            pool_id = pool_address.lower()
-
-            # Query pool data and 7-day historical data
-            query = f"""{{
-                pool(id: "{pool_id}") {{
-                    id
-                    token0 {{
-                        symbol
-                        decimals
-                    }}
-                    token1 {{
-                        symbol
-                        decimals
-                    }}
-                    feeTier
-                    sqrtPrice
-                    liquidity
-                    volumeUSD
-                    totalValueLockedUSD
-                    token0Price
-                    token1Price
-                }}
-                poolDayDatas(
-                    first: 7,
-                    orderBy: date,
-                    orderDirection: desc,
-                    where: {{ pool: "{pool_id}" }}
-                ) {{
-                    date
-                    volumeUSD
-                    tvlUSD
-                    feesUSD
-                }}
-            }}"""
-
-            data = await self._query_graph(query)
-
-            if not data or "pool" not in data or not data["pool"]:
-                logger.warning(f"Pool not found: {pool_address}")
-                return ToolResult(
-                    output=None,
-                    error=f"Pool {pool_address} not found on {dex}",
-                    metadata={"pool_address": pool_address}
-                )
-
-            pool = data["pool"]
-            pool_day_data = data.get("poolDayDatas", [])
-
-            # Calculate 24h volume and fees
-            volume_24h = float(pool_day_data[0]["volumeUSD"]) if pool_day_data else 0
-            fees_24h = float(pool_day_data[0]["feesUSD"]) if pool_day_data else 0
-            tvl = float(pool["totalValueLockedUSD"])
-
-            # Calculate 7-day APR from fees
-            total_fees_7d = sum(float(d["feesUSD"]) for d in pool_day_data[:7])
-            avg_tvl_7d = sum(float(d["tvlUSD"]) for d in pool_day_data[:7]) / max(len(pool_day_data), 1)
-            apr_7d = (total_fees_7d / max(avg_tvl_7d, 1)) * 52.14 * 100 if avg_tvl_7d > 0 else 0  # Annualized
-
-            # Get price change (compare latest to 7 days ago)
-            current_price = float(pool["token0Price"])
-            price_7d_ago = float(pool_day_data[-1]["feesUSD"]) / max(float(pool_day_data[-1]["volumeUSD"]), 1) if len(pool_day_data) >= 7 else current_price
-            price_change_24h = ((current_price - price_7d_ago) / max(price_7d_ago, 1)) * 100 if price_7d_ago > 0 else 0
-
-            pool_data = {
-                "pool_address": pool["id"],
-                "dex": dex,
-                "token0": pool["token0"]["symbol"],
-                "token1": pool["token1"]["symbol"],
-                "fee_tier": int(pool["feeTier"]) / 10000,  # Convert to percentage
-                "tvl_usd": tvl,
-                "volume_24h_usd": volume_24h,
-                "fees_24h_usd": fees_24h,
-                "current_price": current_price,
-                "price_change_24h": price_change_24h,
-                "liquidity": float(pool["liquidity"]),
-                "sqrt_price_x96": int(pool["sqrtPrice"]),
-                "apr_7d": apr_7d,
-                "apr_30d": apr_7d * 0.9,  # Estimate 30d as slightly lower than 7d
+            # Simple mock data for demo
+            pool_configs = {
+                "WETH/USDC": {
+                    "tvl_usd": 45_000_000,
+                    "volume_24h_usd": 25_000_000,
+                    "fees_24h_usd": 12_500,
+                    "apr_7d": 18.5,
+                },
+                "ARB/USDC": {
+                    "tvl_usd": 28_000_000,
+                    "volume_24h_usd": 15_000_000,
+                    "fees_24h_usd": 7_500,
+                    "apr_7d": 22.8,
+                },
+                "WETH/ARB": {
+                    "tvl_usd": 18_000_000,
+                    "volume_24h_usd": 12_000_000,
+                    "fees_24h_usd": 6_000,
+                    "apr_7d": 25.3,
+                }
             }
 
-            logger.info(f"Fetched REAL pool data for {pool['token0']['symbol']}/{pool['token1']['symbol']}: TVL=${tvl:,.0f}, APR={apr_7d:.1f}%")
+            pair_key = f"{token0}/{token1}"
+            config = pool_configs.get(pair_key, pool_configs["WETH/USDC"])
+
+            pool_data = {
+                "pool_address": pool_address or "0x...",
+                "dex": dex,
+                "token0": token0 or "WETH",
+                "token1": token1 or "USDC",
+                "fee_tier": 0.05,
+                "tvl_usd": config["tvl_usd"],
+                "volume_24h_usd": config["volume_24h_usd"],
+                "fees_24h_usd": config["fees_24h_usd"],
+                "current_price": 3500.0,
+                "price_change_24h": 1.5,
+                "liquidity": config["tvl_usd"] * 1000,
+                "apr_7d": config["apr_7d"],
+                "apr_30d": config["apr_7d"] * 0.9,
+            }
+
+            logger.info(f"Pool data for {token0}/{token1}: TVL=${config['tvl_usd']:,.0f}, APR={config['apr_7d']:.1f}%")
             return ToolResult(
                 output=pool_data,
                 error=None,
-                metadata={"source": "the_graph", "dex": dex}
+                metadata={"source": "mock", "dex": dex}
             )
 
         except Exception as e:
-            logger.error(f"Error fetching pool data from The Graph: {e}", exc_info=True)
+            logger.error(f"Error getting pool data: {e}")
             return ToolResult(
                 output=None,
                 error=str(e),
