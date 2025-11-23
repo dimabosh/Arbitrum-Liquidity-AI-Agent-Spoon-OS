@@ -34,6 +34,8 @@ class ArbitrumPoolDataTool(BaseTool):
         }
     }
 
+    rpc_url: Optional[str] = None
+
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the pool data tool.
 
@@ -117,6 +119,9 @@ class ArbitrumLiquidityPositionTool(BaseTool):
             "tick_upper": {"type": "integer", "description": "Upper tick for concentrated liquidity"}
         }
     }
+
+    rpc_url: Optional[str] = None
+    wallet_address: Optional[str] = None
 
     def __init__(self, rpc_url: Optional[str] = None, wallet_address: Optional[str] = None):
         """Initialize the position management tool.
@@ -270,6 +275,9 @@ class ArbitrumSwapTool(BaseTool):
         "required": ["from_token", "to_token", "amount"]
     }
 
+    rpc_url: Optional[str] = None
+    evm_swap: Optional[Any] = None
+
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the swap tool.
 
@@ -359,6 +367,9 @@ class ArbitrumRebalanceTool(BaseTool):
         },
         "required": ["position_id"]
     }
+
+    swap_tool: Optional[Any] = None
+    position_tool: Optional[Any] = None
 
     def __init__(self, rpc_url: Optional[str] = None):
         """Initialize the rebalance tool.
