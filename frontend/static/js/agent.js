@@ -35,10 +35,11 @@ class AgentManager {
             openrouterKey: document.getElementById('openrouterKey')?.value || ''
         };
 
-        if (!this.config.openrouterKey) {
-            this.addLog('Please enter your OpenRouter API key', 'error');
-            alert('OpenRouter API key is required. Get one at https://openrouter.ai/keys');
-            return false;
+        // API key is optional - server will use its own if not provided
+        if (this.config.openrouterKey) {
+            this.addLog('Using your OpenRouter API key', 'info');
+        } else {
+            this.addLog('Using server OpenRouter API key', 'info');
         }
 
         try {

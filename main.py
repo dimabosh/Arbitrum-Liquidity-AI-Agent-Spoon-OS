@@ -133,11 +133,17 @@ async def start_agent(request: web.Request) -> web.Response:
                 status=400
             )
 
+        # Use server's OpenRouter key if user didn't provide one
         if not openrouter_key:
-            return web.json_response(
-                {"error": "openrouter_key is required"},
-                status=400
-            )
+            openrouter_key = os.getenv("OPENROUTER_API_KEY")
+            if not openrouter_key:
+                return web.json_response(
+                    {"error": "OpenRouter API key required. Please provide your key or contact administrator."},
+                    status=400
+                )
+            logger.info(f"Using server OpenRouter key for wallet {wallet_address}")
+        else:
+            logger.info(f"Using user-provided OpenRouter key for wallet {wallet_address}")
 
         # Check if agent already running
         if wallet_address in agents:
