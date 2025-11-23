@@ -311,18 +311,27 @@ class AgentManager {
 
         container.innerHTML = recommendations.map(rec => `
             <div class="recommendation-card">
-                <div class="recommendation-score">
-                    Score: ${rec.score?.toFixed(1) || '0'}/100
-                </div>
                 <h3>${rec.token_pair}</h3>
                 <div class="position-details">
                     <div class="detail-row">
-                        <span class="detail-label">Expected APR:</span>
-                        <span class="detail-value">${rec.expected_apr?.toFixed(2) || '0'}%</span>
+                        <span class="detail-label">APR:</span>
+                        <span class="detail-value" style="color: var(--success-color); font-weight: bold;">${rec.expected_apr?.toFixed(2) || '0'}%</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Amount:</span>
-                        <span class="detail-value">$${rec.recommended_amount_usd?.toFixed(0) || '0'}</span>
+                        <span class="detail-label">TVL:</span>
+                        <span class="detail-value">$${(rec.tvl_usd / 1_000_000)?.toFixed(2) || '0'}M</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Volume 24h:</span>
+                        <span class="detail-value">$${(rec.volume_24h_usd / 1_000_000)?.toFixed(2) || '0'}M</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Fees 24h:</span>
+                        <span class="detail-value">$${rec.fees_24h_usd?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Fee Rate:</span>
+                        <span class="detail-value">${rec.fee_percentage?.toFixed(3) || '0'}%</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Risk:</span>
@@ -333,7 +342,6 @@ class AgentManager {
                         }">${rec.risk_level?.toUpperCase() || 'UNKNOWN'}</span>
                     </div>
                 </div>
-                <p class="recommendation-reason">${rec.reason || ''}</p>
                 ${rec.warnings && rec.warnings.length > 0 ? `
                     <div class="recommendation-warnings">
                         ${rec.warnings.map(w => `

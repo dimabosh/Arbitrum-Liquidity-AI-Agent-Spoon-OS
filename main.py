@@ -385,16 +385,21 @@ async def get_recommendations(request: web.Request) -> web.Response:
                     if metrics.apr_7d > 50:
                         warnings.append("Very high APR - may be unsustainable")
 
+                    # Calculate fee percentage of volume
+                    fee_percentage = (metrics.fees_24h_usd / max(metrics.volume_24h_usd, 1)) * 100
+
                     rec = {
                         "pool_address": metrics.address,
                         "token_pair": f"{metrics.token0}/{metrics.token1}",
                         "score": round(score, 1),
-                        "recommended_amount_usd": round(recommended_amount, 0),
+                        "tvl_usd": metrics.tvl_usd,
+                        "volume_24h_usd": metrics.volume_24h_usd,
+                        "fees_24h_usd": metrics.fees_24h_usd,
+                        "fee_percentage": round(fee_percentage, 3),
                         "tick_lower": tick_lower,
                         "tick_upper": tick_upper,
                         "expected_apr": round(metrics.apr_7d, 2),
                         "risk_level": risk_level,
-                        "reason": f"Score: {score:.1f}/100, APR: {metrics.apr_7d:.1f}%, Vol/TVL: {(metrics.volume_24h_usd/max(metrics.tvl_usd,1)):.2%}",
                         "warnings": warnings
                     }
                     recommendations.append(rec)
