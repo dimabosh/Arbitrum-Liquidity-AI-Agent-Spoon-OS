@@ -296,16 +296,99 @@ async def get_recommendations(request: web.Request) -> web.Response:
 
         agent = agents[wallet_address]
 
-        # Execute query to get recommendations
-        result = await agent.process_query(
-            "Analyze current market conditions and recommend top liquidity opportunities"
-        )
+        # Get top pools to analyze
+        top_pools = [
+            {"address": "0xC31E54c7a869B9FcBEcc14363CF510d1c41fa443", "token0": "WETH", "token1": "USDC"},
+            {"address": "0x641C00A822e8b671738d32a431a4Fb6074E5c79d", "token0": "ARB", "token1": "USDC"},
+            {"address": "0x8c9D3Bc4425773FB08Cf6b1f3E84DE5D4aF5f3c5", "token0": "WETH", "token1": "ARB"},
+        ]
 
-        recommendations = result.get("rebalance_recommendations", [])
+        recommendations = []
+
+        # Analyze each pool using the strategy
+        for pool_info in top_pools:
+            pool_result = await agent.pool_tool.execute(
+                pool_address=pool_info["address"],
+                token0=pool_info["token0"],
+                token1=pool_info["token1"],
+                dex="uniswap_v3"
+            )
+
+            if not pool_result.error and isinstance(pool_result.output, dict):
+                pool_data = pool_result.output
+
+                # Import strategy classes
+                from tools.liquidity_strategy import PoolMetrics
+
+                # Create PoolMetrics
+                metrics = PoolMetrics(
+                    address=pool_info["address"],
+                    dex="uniswap_v3",
+                    token0=pool_data.get("token0", pool_info["token0"]),
+                    token1=pool_data.get("token1", pool_info["token1"]),
+                    tvl_usd=pool_data.get("tvl_usd", 0),
+                    volume_24h_usd=pool_data.get("volume_24h_usd", 0),
+                    fees_24h_usd=pool_data.get("fees_24h_usd", 0),
+                    fee_tier=float(str(pool_data.get("fee_tier", "0.3")).replace("%", "")),
+                    current_price=pool_data.get("current_price", 0),
+                    price_change_24h=pool_data.get("price_change_24h", 0),
+                    apr_7d=pool_data.get("apr_7d", 0),
+                    apr_30d=pool_data.get("apr_30d", 0),
+                    liquidity=pool_data.get("liquidity", 0),
+                )
+
+                # Evaluate using strategy
+                score = agent.strategy.evaluate_pool(metrics)
+                should_enter = agent.strategy.should_enter(metrics, [])
+
+                if should_enter and score >= 60:
+                    # Calculate position size
+                    recommended_amount = 1000 + (score / 100) * 9000
+                    recommended_amount = min(recommended_amount, metrics.tvl_usd * 0.01, 10000)
+
+                    # Calculate range
+                    tick_lower, tick_upper = agent.strategy.calculate_position_range(metrics, "moderate")
+
+                    # Determine risk
+                    stablecoins = {"USDC", "USDT", "DAI"}
+                    is_stable = metrics.token0 in stablecoins and metrics.token1 in stablecoins
+                    if is_stable:
+                        risk_level = "low"
+                    elif abs(metrics.price_change_24h) > 10:
+                        risk_level = "high"
+                    else:
+                        risk_level = "medium"
+
+                    # Generate warnings
+                    warnings = []
+                    if metrics.tvl_usd < 1_000_000:
+                        warnings.append("Low liquidity pool")
+                    if metrics.volume_24h_usd < 100_000:
+                        warnings.append("Low trading volume")
+                    if abs(metrics.price_change_24h) > 15:
+                        warnings.append(f"High volatility: {metrics.price_change_24h:.1f}%")
+                    if metrics.apr_7d > 50:
+                        warnings.append("Very high APR - may be unsustainable")
+
+                    recommendations.append({
+                        "pool_address": metrics.address,
+                        "token_pair": f"{metrics.token0}/{metrics.token1}",
+                        "score": round(score, 1),
+                        "recommended_amount_usd": round(recommended_amount, 0),
+                        "tick_lower": tick_lower,
+                        "tick_upper": tick_upper,
+                        "expected_apr": round(metrics.apr_7d, 2),
+                        "risk_level": risk_level,
+                        "reason": f"Score: {score:.1f}/100, APR: {metrics.apr_7d:.1f}%, Vol/TVL: {(metrics.volume_24h_usd/max(metrics.tvl_usd,1)):.2%}",
+                        "warnings": warnings
+                    })
+
+        # Sort by score
+        recommendations.sort(key=lambda x: x["score"], reverse=True)
 
         return web.json_response({
             "success": True,
-            "recommendations": recommendations
+            "recommendations": recommendations[:5]  # Top 5
         })
 
     except Exception as e:

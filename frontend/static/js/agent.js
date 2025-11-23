@@ -77,6 +77,10 @@ class AgentManager {
             // Start monitoring
             this.startMonitoring();
 
+            // Fetch initial recommendations
+            this.addLog('Analyzing liquidity pools...', 'info');
+            await this.fetchRecommendations();
+
             return true;
         } catch (error) {
             console.error('Error starting agent:', error);
